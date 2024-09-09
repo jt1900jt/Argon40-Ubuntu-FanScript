@@ -1,145 +1,116 @@
-#Argon Fan Control Script
+Raspberry Pi Fan Control Script
 
-This script is designed to control the fan speed of the Argon case on Ubuntu and Raspberry Pi systems. It supports configuring fan speed based on temperature thresholds, setting hysteresis values, and managing the fan control service.
+This project provides a simple yet effective way to control a fan on a Raspberry Pi, adjusting the fan speed based on the CPU temperature. The script polls the temperature at regular intervals and adjusts the fan speed accordingly. It also includes functionality for configuring fan speed thresholds, updating hysteresis values, and more.
+Features
 
-#Installation
+    Automatic Fan Control: Adjusts fan speed based on CPU temperature thresholds.
+    Configurable Fan Speeds: Set temperature thresholds for different fan speeds (off, low, medium, high, full).
+    Hysteresis: Prevents unnecessary fan speed changes by defining a buffer range.
+    Status Check: Displays the current CPU temperature and fan speed.
+    Service Management: Start, stop, and restart the fan control service.
+    Update: Easily update the script from GitHub.
+    Uninstall: Completely remove the fan control service from your system.
 
-    Clone or download the repository.
-    Run the install.sh script to install the necessary files and start the fan control service.
+Installation
+Step 1: Download and Install the Script
+
+To install the fan control script, use the following command to download and run the installer:
 
 bash
 
+wget https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript/main/install.sh
+sudo chmod +x install.sh
 sudo ./install.sh
 
-To uninstall:
+The installation will:
+
+    Install required packages (python3, jq).
+    Download the fan control script and configuration file.
+    Set up the fan control service to run automatically.
+
+Step 2: Configuration
+
+The script uses a configuration file located at /etc/fan_config.json. The file contains temperature thresholds for the different fan speeds:
+
+json
+
+{
+  "fan_speeds": {
+    "off": 55,
+    "low": 60,
+    "medium": 68,
+    "high": 75,
+    "full": 80
+  },
+  "hysteresis": 5
+}
+
+You can manually edit this file or use the built-in commands to modify it.
+Usage
+Fan Command
+
+The main command to interact with the fan control script is:
 
 bash
 
-sudo ./install.sh uninstall
+fan [option]
 
-Commands
-1. argon -update
+Available Options
 
-This command updates the fan control script, configuration, and the argon command itself by pulling the latest versions from GitHub.
+    fan -status: Displays the current CPU temperature and fan speed.
+    fan -config off:temp,low:temp,medium:temp,high:temp,full:temp: Updates the temperature thresholds for fan speeds.
+    fan -h hysteresis_value: Updates the hysteresis value.
+    fan -show: Displays the current fan configuration.
+    fan -start: Starts the fan control service.
+    fan -stop: Stops the fan control service and turns off the fan.
+    fan -poll: Continuously monitors the temperature and adjusts the fan speed.
+    fan -update: Updates the script and configuration from GitHub.
+    fan -uninstall: Completely removes the fan control service and configuration files.
 
-bash
-
-sudo argon -update
-
-2. argon -speed
-
-Displays the current fan speed based on the CPU temperature and the configured fan speed curve.
-
-bash
-
-sudo argon -speed
-
-3. argon -temp
-
-Displays the current CPU temperature.
+Examples
+Check Current Fan Status
 
 bash
 
-sudo argon -temp
+fan -status
 
-4. argon -h <hysteresis_value>
-
-Updates the hysteresis value. The hysteresis value prevents frequent toggling of the fan by providing a buffer temperature.
+Update Fan Speed Configuration
 
 bash
 
-sudo argon -h 5
+fan -config off:55,low:60,medium:68,high:75,full:80
 
-In the above example, the hysteresis is set to 5°C.
-5. argon -config temp:fanspeed,temp1:fanspeed1,...
-
-Configures the fan speed based on temperature thresholds. You can specify multiple temperature and fan speed pairs.
+Update Hysteresis Value
 
 bash
 
-sudo argon -config 40:30,50:50,60:70,70:100
+fan -h 5
 
-In this example:
-
-    At 40°C, the fan runs at 30% speed.
-    At 50°C, the fan runs at 50% speed.
-    At 60°C, the fan runs at 70% speed.
-    At 70°C and above, the fan runs at 100% speed.
-
-6. argon -show
-
-Displays the current fan configuration (temperature thresholds and corresponding fan speeds) and the hysteresis value in a human-readable format.
+Start or Stop the Fan Control Service
 
 bash
 
-sudo argon -show
+fan -start
+fan -stop
 
-Example output:
-
-yaml
-
-Current Fan Configuration:
-Fan Speeds:
-  Temperature: 40°C => Fan Speed: 30%
-  Temperature: 50°C => Fan Speed: 50%
-  Temperature: 60°C => Fan Speed: 70%
-  Temperature: 70°C => Fan Speed: 100%
-Hysteresis: 5°C
-
-7. argon -stop
-
-Stops the fan control service and sets the fan speed to 0 (turns off the fan).
+Update the Script
 
 bash
 
-sudo argon -stop
+fan -update
 
-8. argon -start
-
-Starts the fan control service if it is not running.
+Uninstall the Script
 
 bash
 
-sudo argon -start
+fan -uninstall
 
-9. Service Management
+Uninstalling
 
-You can also manually control the fan control service using systemd:
-
-    Check the status:
-
-    bash
-
-sudo systemctl status argon_fan_control.service
-
-Restart the service:
+To completely remove the fan control script and service, use the following command:
 
 bash
 
-    sudo systemctl restart argon_fan_control.service
+fan -uninstall
 
-Troubleshooting
-1. Fan not responding
-
-    Ensure that the fan is properly connected to the correct GPIO pin.
-    Verify the service status:
-
-    bash
-
-    sudo systemctl status argon_fan_control.service
-
-2. Fan speed not updating
-
-Ensure that the configuration is properly set using the -config command. You can check the configuration using the -show command.
-3. Error during update
-
-If argon -update does not seem to be updating the script, you can manually download the latest files from the GitHub repository:
-
-bash
-
-sudo wget -O /usr/local/bin/argon https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript/main/argon
-sudo chmod +x /usr/local/bin/argon
-
-License
-
-This script is open-source and available for use and modification. Feel free to contribute!
+This will stop the service, remove the script, and delete the configuration files.
