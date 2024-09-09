@@ -2,10 +2,10 @@
 
 # Define constants
 GITHUB_REPO="https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript/main"
-CONFIG_FILE="/etc/argon_fan_config.json"
+CONFIG_FILE="/etc/fan_config.json"
 FAN_CONTROL_FILE="/sys/class/thermal/cooling_device0/cur_state"
 TEMP_COMMAND="/usr/bin/vcgencmd measure_temp"
-SERVICE_NAME="argon_fan_control"
+SERVICE_NAME="fan_control"
 
 # Function to load configuration from config.json
 load_config() {
@@ -46,7 +46,7 @@ set_fan_speed() {
 # Function to update fan configuration from the command line
 update_fan_config() {
     if [ -z "$1" ]; then
-        echo "Usage: argon -config low:temp,medium:temp,high:temp,max:temp"
+        echo "Usage: fan -config low:temp,medium:temp,high:temp,max:temp"
         exit 1
     fi
 
@@ -74,7 +74,7 @@ update_fan_config() {
 # Function to update hysteresis value
 update_hysteresis() {
     if [ -z "$1" ]; then
-        echo "Usage: argon -h hysteresis_value"
+        echo "Usage: fan -h hysteresis_value"
         exit 1
     fi
 
@@ -139,6 +139,6 @@ elif [ "$1" == "-stop" ]; then
 elif [ "$1" == "-start" ]; then
     start_fan_service
 else
-    echo "Usage: argon -speed, argon -temp, argon -config low:temp,medium:temp,high:temp,max:temp, argon -h hysteresis_value, argon -show, argon -stop, argon -start"
+    echo "Usage: fan -speed, fan -temp, fan -config low:temp,medium:temp,high:temp,max:temp, fan -h hysteresis_value, fan -show, fan -stop, fan -start"
     exit 1
 fi
