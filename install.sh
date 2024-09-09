@@ -6,6 +6,7 @@ SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
 CONFIG_FILE="/etc/argon_fan_config.json"
 SCRIPT_FILE="/usr/local/bin/argon_fan_control.py"
 ARGON_CMD="/usr/local/bin/argon"
+GPIO_CONTROL_FILE="/usr/local/bin/gpio_control.py"
 GITHUB_REPO="https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript/main"
 
 # Function to install the fan control app
@@ -20,6 +21,11 @@ install_fan_control() {
     echo "Downloading fan control script..."
     sudo wget -O $SCRIPT_FILE "$GITHUB_REPO/argon_fan_control.py"
     sudo chmod +x $SCRIPT_FILE
+
+    # Download the gpio control script
+    echo "Downloading GPIO control script..."
+    sudo wget -O $GPIO_CONTROL_FILE "$GITHUB_REPO/gpio_control.py"
+    sudo chmod +x $GPIO_CONTROL_FILE
 
     # Download the argon command script
     echo "Downloading argon command script..."
@@ -84,6 +90,10 @@ uninstall_fan_control() {
     # Remove the fan control script
     echo "Removing the fan control script..."
     sudo rm -f $SCRIPT_FILE
+
+    # Remove the gpio control script
+    echo "Removing the GPIO control script..."
+    sudo rm -f $GPIO_CONTROL_FILE
 
     # Remove the argon command script
     echo "Removing the argon command script..."
