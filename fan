@@ -8,8 +8,9 @@ TEMP_COMMAND="/usr/bin/vcgencmd measure_temp"
 SERVICE_NAME="fan_control"
 FAN_CMD="/usr/local/bin/fan"
 POLL_INTERVAL=60  # Time in seconds between temperature checks
+last_fan_speed=-1  # Cache the last fan speed to avoid unnecessary I/O
 
-# Function to load configuration from config.json
+# Function to load configuration from config.json (runs once per poll cycle)
 load_config() {
     if [ ! -f $CONFIG_FILE ]; then
         echo "Configuration file not found! Please create $CONFIG_FILE"
@@ -23,26 +24,33 @@ load_config() {
     hysteresis=$(jq '.hysteresis' $CONFIG_FILE)
 }
 
-# Function to get the current CPU temperature
+# Function to get the current CPU temperature (directly from sysfs for efficiency)
 get_cpu_temp() {
-    temp=$($TEMP_COMMAND | egrep -o '[0-9]*\.[0-9]*')
-    echo "$temp"
+    temp=$(cat /sys/class/thermal/thermal_zone0/temp)
+    echo "$((temp / 1000))"  # Converts millidegrees to degrees
 }
 
-# Function to set fan speed based on temperature
+# Optimized function to set fan speed based on temperature
 set_fan_speed() {
     local temp=$1
+    local new_fan_speed
 
-    if (( $(echo "$temp < $off_temp" | bc -l) )); then
-        echo 0 | sudo tee $FAN_CONTROL_FILE  # OFF
-    elif (( $(echo "$temp < $low_temp" | bc -l) )); then
-        echo 1 | sudo tee $FAN_CONTROL_FILE  # LOW
-    elif (( $(echo "$temp < $medium_temp" | bc -l) )); then
-        echo 2 | sudo tee $FAN_CONTROL_FILE  # MEDIUM
-    elif (( $(echo "$temp < $high_temp" | bc -l) )); then
-        echo 3 | sudo tee $FAN_CONTROL_FILE  # HIGH
+    if [[ "$temp" -lt "$off_temp" ]]; then
+        new_fan_speed=0
+    elif [[ "$temp" -lt "$low_temp" ]]; then
+        new_fan_speed=1
+    elif [[ "$temp" -lt "$medium_temp" ]]; then
+        new_fan_speed=2
+    elif [[ "$temp" -lt "$high_temp" ]]; then
+        new_fan_speed=3
     else
-        echo 4 | sudo tee $FAN_CONTROL_FILE  # FULL
+        new_fan_speed=4
+    fi
+
+    # Write the new fan speed only if it has changed
+    if [[ "$new_fan_speed" != "$last_fan_speed" ]]; then
+        echo $new_fan_speed | sudo tee $FAN_CONTROL_FILE > /dev/null
+        last_fan_speed=$new_fan_speed
     fi
 }
 
@@ -190,11 +198,10 @@ show_fan_status() {
 # Polling loop for checking the temperature every 60 seconds
 poll_temperature() {
     while true; do
-        load_config
-        current_temp=$(get_cpu_temp)
-        echo "Current CPU temperature: $current_temp°C"
-        set_fan_speed $current_temp
-        sleep $POLL_INTERVAL  # Wait for the specified polling interval before checking again
+        load_config  # Load configuration once per cycle
+        current_temp=$(get_cpu_temp)  # Get current temperature
+        set_fan_speed $current_temp   # Adjust fan speed
+        sleep $POLL_INTERVAL  # Wait for the polling interval
     done
 }
 
