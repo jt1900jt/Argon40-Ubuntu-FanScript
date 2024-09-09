@@ -2,87 +2,73 @@
 
 # Define constants
 GITHUB_REPO="https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript/main"
-SCRIPT_FILE="/usr/local/bin/argon_fan_control.py"
 CONFIG_FILE="/etc/argon_fan_config.json"
-SERVICE_FILE="/etc/systemd/system/argon_fan_control.service"
-ARGON_CMD="/usr/local/bin/argon"
+FAN_CONTROL_FILE="/sys/class/thermal/cooling_device0/cur_state"
+TEMP_COMMAND="/usr/bin/vcgencmd measure_temp"
+SERVICE_NAME="argon_fan_control"
 
-# Function to update the script from GitHub
-update_fan_control() {
-    echo "Updating the fan control script and configuration from GitHub..."
-
-    # Download the latest fan control script
-    sudo wget -O $SCRIPT_FILE "$GITHUB_REPO/argon_fan_control.py"
-    sudo chmod +x $SCRIPT_FILE
-
-    # Download the latest configuration file
-    sudo wget -O $CONFIG_FILE "$GITHUB_REPO/fan_config.json"
-    sudo chmod 644 $CONFIG_FILE
-
-    # Download the latest argon command script (this script itself)
-    sudo wget -O $ARGON_CMD "$GITHUB_REPO/argon"
-    sudo chmod +x $ARGON_CMD
-
-    # Reload the systemd service to apply the updates
-    echo "Reloading the systemd service..."
-    sudo systemctl daemon-reload && sudo systemctl restart argon_fan_control.service
-
-    echo "Update complete. The argon command and fan control script have been updated."
+# Function to load configuration from config.json
+load_config() {
+    if [ ! -f $CONFIG_FILE ]; then
+        echo "Configuration file not found! Please create $CONFIG_FILE"
+        exit 1
+    fi
+    low_temp=$(jq '.fan_speeds.low' $CONFIG_FILE)
+    medium_temp=$(jq '.fan_speeds.medium' $CONFIG_FILE)
+    high_temp=$(jq '.fan_speeds.high' $CONFIG_FILE)
+    max_temp=$(jq '.fan_speeds.maximum' $CONFIG_FILE)
+    hysteresis=$(jq '.hysteresis' $CONFIG_FILE)
 }
 
 # Function to get the current CPU temperature
 get_cpu_temp() {
-    temp=$(vcgencmd measure_temp | sed 's/[^0-9.]//g')
-    if [ -n "$temp" ]; then
-        echo "Current CPU temperature: $temp°C"
+    temp=$($TEMP_COMMAND | egrep -o '[0-9]*\.[0-9]*')
+    echo "$temp"
+}
+
+# Function to set fan speed based on temperature
+set_fan_speed() {
+    local temp=$1
+
+    if (( $(echo "$temp < $low_temp" | bc -l) )); then
+        echo 0 | sudo tee $FAN_CONTROL_FILE  # Fan off
+    elif (( $(echo "$temp < $medium_temp" | bc -l) )); then
+        echo 1 | sudo tee $FAN_CONTROL_FILE  # Low fan speed
+    elif (( $(echo "$temp < $high_temp" | bc -l) )); then
+        echo 2 | sudo tee $FAN_CONTROL_FILE  # Medium fan speed
+    elif (( $(echo "$temp < $max_temp" | bc -l) )); then
+        echo 3 | sudo tee $FAN_CONTROL_FILE  # High fan speed
     else
-        echo "Failed to retrieve CPU temperature."
+        echo 4 | sudo tee $FAN_CONTROL_FILE  # Maximum fan speed
+    fi
+}
+
+# Function to update fan configuration from the command line
+update_fan_config() {
+    if [ -z "$1" ]; then
+        echo "Usage: argon -config low:temp,medium:temp,high:temp,max:temp"
         exit 1
     fi
-}
 
-# Function to return the current fan speed based on the temperature
-get_fan_speed() {
-    current_temp=$(get_cpu_temp)
-    fan_speeds=$(jq -r '.fan_speeds' $CONFIG_FILE)
-
-    current_speed=0
-    for temp in $(echo $fan_speeds | jq -r 'keys[]'); do
-        if (( $(echo "$current_temp >= $temp" | awk '{print ($1 >= $2)}') )); then
-            current_speed=$(echo $fan_speeds | jq -r --arg temp "$temp" '.[$temp]')
+    IFS=',' read -ra PAIRS <<< "$1"
+    declare -A fan_speeds
+    for pair in "${PAIRS[@]}"; do
+        IFS=':' read -r level temp <<< "$pair"
+        if [[ -z "$level" || -z "$temp" ]]; then
+            echo "Invalid format. Use level:temp format."
+            exit 1
         fi
+        fan_speeds["$level"]="$temp"
     done
 
-    if [ -n "$current_speed" ]; then
-        echo "Current fan speed: $current_speed%"
-    else
-        echo "Failed to determine the fan speed."
-    fi
-}
+    echo "Updating fan speed configuration..."
+    jq --argjson low "${fan_speeds[low]}" --argjson medium "${fan_speeds[medium]}" --argjson high "${fan_speeds[high]}" --argjson maximum "${fan_speeds[maximum]}" \
+       '.fan_speeds.low = $low | .fan_speeds.medium = $medium | .fan_speeds.high = $high | .fan_speeds.maximum = $maximum' $CONFIG_FILE > /tmp/config.json
 
-# Function to stop the fan and disable the service
-stop_fan_service() {
-    echo "Stopping the fan control service..."
-    sudo systemctl stop argon_fan_control.service
+    sudo mv /tmp/config.json $CONFIG_FILE
+    sudo chmod 644 $CONFIG_FILE
 
-    echo "Turning off the fan (setting speed to 0)..."
-    
-    # Call the Python script to turn off the fan
-    sudo python3 /usr/local/bin/gpio_control.py
-
-    echo "Fan control service stopped and fan turned off."
-}
-
-# Function to start the fan control service
-start_fan_service() {
-    echo "Starting the fan control service..."
-    sudo systemctl start argon_fan_control.service
-
-    if sudo systemctl is-active --quiet argon_fan_control.service; then
-        echo "Fan control service started."
-    else
-        echo "Failed to start the fan control service."
-    fi
+    echo "Fan speed configuration updated."
 }
 
 # Function to update hysteresis value
@@ -98,74 +84,54 @@ update_hysteresis() {
     fi
 
     local hysteresis=$1
-    fan_speeds=$(jq '.fan_speeds' $CONFIG_FILE)
-
-    echo "{ \"fan_speeds\": $fan_speeds, \"hysteresis\": $hysteresis }" > $CONFIG_FILE
+    jq --argjson hysteresis "$hysteresis" '.hysteresis = $hysteresis' $CONFIG_FILE > /tmp/config.json
+    sudo mv /tmp/config.json $CONFIG_FILE
     sudo chmod 644 $CONFIG_FILE
 
     echo "Hysteresis updated to $hysteresis°C."
 }
 
-# Function to update fan speed configuration
-update_fan_config() {
-    if [ -z "$1" ]; then
-        echo "Usage: argon -config temp:fanspeed,temp1:fanspeed1"
-        exit 1
-    fi
+# Function to stop the fan control service
+stop_fan_service() {
+    echo "Stopping the fan control service..."
+    sudo systemctl stop $SERVICE_NAME
 
-    IFS=',' read -ra PAIRS <<< "$1"
-    declare -A fan_speeds
-    for pair in "${PAIRS[@]}"; do
-        IFS=':' read -r temp speed <<< "$pair"
-        if [[ -z "$temp" || -z "$speed" ]]; then
-            echo "Invalid format for configuration. Use temp:fanspeed format."
-            exit 1
-        fi
-        fan_speeds["$temp"]="$speed"
-    done
+    echo "Turning off the fan (setting fan speed to 0)..."
+    echo 0 | sudo tee $FAN_CONTROL_FILE
 
-    echo "Updating fan speed configuration..."
-    echo "{ \"fan_speeds\": {" > /tmp/fan_config.tmp
-    for temp in "${!fan_speeds[@]}"; do
-        echo "\"$temp\": ${fan_speeds[$temp]}," >> /tmp/fan_config.tmp
-    done
-    sed -i '$ s/,$//' /tmp/fan_config.tmp  # Remove trailing comma
-    echo "}, \"hysteresis\": 5 }" >> /tmp/fan_config.tmp  # Keep the existing hysteresis
-
-    sudo mv /tmp/fan_config.tmp $CONFIG_FILE
-    sudo chmod 644 $CONFIG_FILE
-
-    # Restart the service to apply the changes
-    sudo systemctl restart argon_fan_control.service
-    echo "Fan speed configuration updated successfully."
+    echo "Fan control service stopped and fan turned off."
 }
 
-# Function to show the current fan configuration in a readable format
+# Function to start the fan control service
+start_fan_service() {
+    echo "Starting the fan control service..."
+    sudo systemctl start $SERVICE_NAME
+
+    if sudo systemctl is-active --quiet $SERVICE_NAME; then
+        echo "Fan control service started."
+    else
+        echo "Failed to start the fan control service."
+    fi
+}
+
+# Function to show the current fan configuration
 show_fan_config() {
     echo "Current Fan Configuration:"
-    fan_speeds=$(jq -r '.fan_speeds' $CONFIG_FILE)
-    hysteresis=$(jq -r '.hysteresis' $CONFIG_FILE)
-
-    echo "Fan Speeds:"
-    for temp in $(echo $fan_speeds | jq -r 'keys[]'); do
-        speed=$(echo $fan_speeds | jq -r --arg temp "$temp" '.[$temp]')
-        echo "  Temperature: $temp°C => Fan Speed: $speed%"
-    done
-
-    echo "Hysteresis: $hysteresis°C"
+    jq '.' $CONFIG_FILE
 }
 
 # Parse command line arguments
-if [ "$1" == "-update" ]; then
-    update_fan_control
-elif [ "$1" == "-speed" ]; then
-    get_fan_speed
+if [ "$1" == "-speed" ]; then
+    load_config
+    current_temp=$(get_cpu_temp)
+    echo "Current CPU temperature: $current_temp°C"
+    set_fan_speed $current_temp
 elif [ "$1" == "-temp" ]; then
     get_cpu_temp
-elif [ "$1" == "-h" ]; then
-    update_hysteresis "$2"
 elif [ "$1" == "-config" ]; then
     update_fan_config "$2"
+elif [ "$1" == "-h" ]; then
+    update_hysteresis "$2"
 elif [ "$1" == "-show" ]; then
     show_fan_config
 elif [ "$1" == "-stop" ]; then
@@ -173,6 +139,6 @@ elif [ "$1" == "-stop" ]; then
 elif [ "$1" == "-start" ]; then
     start_fan_service
 else
-    echo "Usage: argon -update, argon -speed, argon -temp, argon -h hysteresis_value, argon -config temp:fanspeed,temp1:fanspeed1, argon -show, argon -stop, argon -start"
+    echo "Usage: argon -speed, argon -temp, argon -config low:temp,medium:temp,high:temp,max:temp, argon -h hysteresis_value, argon -show, argon -stop, argon -start"
     exit 1
 fi
