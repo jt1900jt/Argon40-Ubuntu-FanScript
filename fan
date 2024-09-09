@@ -13,10 +13,11 @@ load_config() {
         echo "Configuration file not found! Please create $CONFIG_FILE"
         exit 1
     fi
+    off_temp=$(jq '.fan_speeds.off' $CONFIG_FILE)
     low_temp=$(jq '.fan_speeds.low' $CONFIG_FILE)
     medium_temp=$(jq '.fan_speeds.medium' $CONFIG_FILE)
     high_temp=$(jq '.fan_speeds.high' $CONFIG_FILE)
-    max_temp=$(jq '.fan_speeds.maximum' $CONFIG_FILE)
+    full_temp=$(jq '.fan_speeds.full' $CONFIG_FILE)
     hysteresis=$(jq '.hysteresis' $CONFIG_FILE)
 }
 
@@ -30,23 +31,23 @@ get_cpu_temp() {
 set_fan_speed() {
     local temp=$1
 
-    if (( $(echo "$temp < $low_temp" | bc -l) )); then
-        echo 0 | sudo tee $FAN_CONTROL_FILE  # Fan off
+    if (( $(echo "$temp < $off_temp" | bc -l) )); then
+        echo 0 | sudo tee $FAN_CONTROL_FILE  # OFF
+    elif (( $(echo "$temp < $low_temp" | bc -l) )); then
+        echo 1 | sudo tee $FAN_CONTROL_FILE  # LOW
     elif (( $(echo "$temp < $medium_temp" | bc -l) )); then
-        echo 1 | sudo tee $FAN_CONTROL_FILE  # Low fan speed
+        echo 2 | sudo tee $FAN_CONTROL_FILE  # MEDIUM
     elif (( $(echo "$temp < $high_temp" | bc -l) )); then
-        echo 2 | sudo tee $FAN_CONTROL_FILE  # Medium fan speed
-    elif (( $(echo "$temp < $max_temp" | bc -l) )); then
-        echo 3 | sudo tee $FAN_CONTROL_FILE  # High fan speed
+        echo 3 | sudo tee $FAN_CONTROL_FILE  # HIGH
     else
-        echo 4 | sudo tee $FAN_CONTROL_FILE  # Maximum fan speed
+        echo 4 | sudo tee $FAN_CONTROL_FILE  # FULL
     fi
 }
 
 # Function to update fan configuration from the command line
 update_fan_config() {
     if [ -z "$1" ]; then
-        echo "Usage: fan -config low:temp,medium:temp,high:temp,max:temp"
+        echo "Usage: fan -config off:temp,low:temp,medium:temp,high:temp,full:temp"
         exit 1
     fi
 
@@ -62,8 +63,8 @@ update_fan_config() {
     done
 
     echo "Updating fan speed configuration..."
-    jq --argjson low "${fan_speeds[low]}" --argjson medium "${fan_speeds[medium]}" --argjson high "${fan_speeds[high]}" --argjson maximum "${fan_speeds[maximum]}" \
-       '.fan_speeds.low = $low | .fan_speeds.medium = $medium | .fan_speeds.high = $high | .fan_speeds.maximum = $maximum' $CONFIG_FILE > /tmp/config.json
+    jq --argjson off "${fan_speeds[off]}" --argjson low "${fan_speeds[low]}" --argjson medium "${fan_speeds[medium]}" --argjson high "${fan_speeds[high]}" --argjson full "${fan_speeds[full]}" \
+       '.fan_speeds.off = $off | .fan_speeds.low = $low | .fan_speeds.medium = $medium | .fan_speeds.high = $high | .fan_speeds.full = $full' $CONFIG_FILE > /tmp/config.json
 
     sudo mv /tmp/config.json $CONFIG_FILE
     sudo chmod 644 $CONFIG_FILE
@@ -139,6 +140,6 @@ elif [ "$1" == "-stop" ]; then
 elif [ "$1" == "-start" ]; then
     start_fan_service
 else
-    echo "Usage: fan -speed, fan -temp, fan -config low:temp,medium:temp,high:temp,max:temp, fan -h hysteresis_value, fan -show, fan -stop, fan -start"
+    echo "Usage: fan -speed, fan -temp, fan -config off:temp,low:temp,medium:temp,high:temp,full:temp, fan -h hysteresis_value, fan -show, fan -stop, fan -start"
     exit 1
 fi
