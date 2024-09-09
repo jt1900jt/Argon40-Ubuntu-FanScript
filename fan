@@ -6,6 +6,7 @@ CONFIG_FILE="/etc/fan_config.json"
 FAN_CONTROL_FILE="/sys/class/thermal/cooling_device0/cur_state"
 TEMP_COMMAND="/usr/bin/vcgencmd measure_temp"
 SERVICE_NAME="fan_control"
+FAN_CMD="/usr/local/bin/fan"
 POLL_INTERVAL=60  # Time in seconds between temperature checks
 
 # Function to load configuration from config.json
@@ -197,6 +198,44 @@ poll_temperature() {
     done
 }
 
+# Function to update the script from GitHub
+update_fan_control() {
+    echo "Updating the fan control script and configuration from GitHub..."
+
+    # Download the latest fan command script
+    sudo wget -O $FAN_CMD "$GITHUB_REPO/fan"
+    sudo chmod +x $FAN_CMD
+
+    # Download the latest configuration file
+    sudo wget -O $CONFIG_FILE "$GITHUB_REPO/fan_config.json"
+    sudo chmod 644 $CONFIG_FILE
+
+    # Reload the systemd service to apply the updates
+    echo "Reloading the systemd service..."
+    sudo systemctl daemon-reload && sudo systemctl restart $SERVICE_NAME
+
+    echo "Update complete. The fan command and fan control script have been updated."
+}
+
+# Function to uninstall the fan control app
+uninstall_fan_control() {
+    echo "Uninstalling the fan control service..."
+
+    # Stop and disable the service
+    sudo systemctl stop $SERVICE_NAME
+    sudo systemctl disable $SERVICE_NAME
+
+    # Remove service, script, and config files
+    sudo rm -f /etc/systemd/system/$SERVICE_NAME.service
+    sudo rm -f $FAN_CMD
+    sudo rm -f $CONFIG_FILE
+
+    # Reload systemd to apply changes
+    sudo systemctl daemon-reload
+
+    echo "Fan control service uninstalled successfully."
+}
+
 # Parse command line arguments
 if [ "$1" == "-status" ]; then
     show_fan_status  # Show current status of CPU temp and fan speed
@@ -212,7 +251,11 @@ elif [ "$1" == "-start" ]; then
     start_fan_service
 elif [ "$1" == "-poll" ]; then
     poll_temperature  # Start polling for temperature in a loop
+elif [ "$1" == "-update" ]; then
+    update_fan_control  # Update the script from GitHub
+elif [ "$1" == "-uninstall" ]; then
+    uninstall_fan_control  # Uninstall the service and remove files
 else
-    echo "Usage: fan -status, fan -config off:temp,low:temp,medium:temp,high:temp,full:temp, fan -h hysteresis_value, fan -show, fan -stop, fan -start, fan -poll"
+    echo "Usage: fan -status, fan -config off:temp,low:temp,medium:temp,high:temp,full:temp, fan -h hysteresis_value, fan -show, fan -stop, fan -start, fan -poll, fan -update, fan -uninstall"
     exit 1
 fi
