@@ -4,7 +4,8 @@
 SERVICE_NAME="fan_control"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
 CONFIG_FILE="/etc/fan_config.json"
-FAN_CMD="/usr/local/bin/fan"
+SCRIPT_FILE="/usr/local/bin/fan"
+MANPAGE_FILE="/usr/local/man/man1/fan.1.gz"
 GITHUB_REPO="https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript/main"
 
 # Function to install the fan control app
@@ -12,14 +13,24 @@ install_fan_control() {
     # Install necessary packages
     echo "Installing required packages..."
     sudo apt update
-    sudo apt install -y python3 python3-pip jq
+    sudo apt install -y python3 python3-pip jq gzip
 
-    # Download the fan command script
-    echo "Downloading fan command script..."
-    sudo wget -O $FAN_CMD "$GITHUB_REPO/fan"
-    
-    # Ensure that the fan command script is executable
-    sudo chmod +x $FAN_CMD
+    # Download the fan control script
+    echo "Downloading fan control script..."
+    sudo wget -O $SCRIPT_FILE "$GITHUB_REPO/fan"
+    sudo chmod +x $SCRIPT_FILE
+
+    # Download the man page
+    echo "Downloading and installing man page..."
+    sudo wget -O /usr/local/man/man1/fan.1 "$GITHUB_REPO/fan.1"
+    sudo gzip /usr/local/man/man1/fan.1
+
+    # Ensure the man page directory is in the MANPATH
+    if ! manpath | grep -q "/usr/local/man"; then
+        echo "Adding /usr/local/man to MANPATH..."
+        export MANPATH=$MANPATH:/usr/local/man
+        echo 'export MANPATH=$MANPATH:/usr/local/man' >> ~/.bashrc
+    fi
 
     # Create a default configuration file
     echo "Creating default configuration file..."
@@ -35,7 +46,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=$FAN_CMD -poll
+ExecStart=/usr/local/bin/fan -poll
 Restart=on-failure
 User=root
 
@@ -76,13 +87,17 @@ uninstall_fan_control() {
     echo "Reloading systemd daemon..."
     sudo systemctl daemon-reload
 
-    # Remove the fan command script
-    echo "Removing the fan command script..."
-    sudo rm -f $FAN_CMD
+    # Remove the fan control script
+    echo "Removing the fan control script..."
+    sudo rm -f $SCRIPT_FILE
 
     # Remove the configuration file
     echo "Removing the configuration file..."
     sudo rm -f $CONFIG_FILE
+
+    # Remove the man page
+    echo "Removing the man page..."
+    sudo rm -f /usr/local/man/man1/fan.1.gz
 
     echo "Uninstallation complete. The fan control app has been removed from your system."
 }
