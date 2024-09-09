@@ -5,7 +5,7 @@ SERVICE_NAME="argon_fan_control"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
 CONFIG_FILE="/etc/argon_fan_config.json"
 SCRIPT_FILE="/usr/local/bin/argon_fan_control.py"
-ARGON_CMD="/usr/local/bin/argon"
+ARGON_CMD="/usr/local/bin/argon.py"
 GITHUB_REPO="https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript/main"
 
 # Function to install the fan control app
