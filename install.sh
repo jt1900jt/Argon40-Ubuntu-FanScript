@@ -1,12 +1,10 @@
 #!/bin/bash
 
 # Define constants
-SERVICE_NAME="argon_fan_control"
+SERVICE_NAME="fan_control"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
-CONFIG_FILE="/etc/argon_fan_config.json"
-SCRIPT_FILE="/usr/local/bin/argon_fan_control.py"
-ARGON_CMD="/usr/local/bin/argon"
-GPIO_CONTROL_FILE="/usr/local/bin/gpio_control.py"
+CONFIG_FILE="/etc/fan_config.json"
+FAN_CMD="/usr/local/bin/fan"
 GITHUB_REPO="https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript/main"
 
 # Function to install the fan control app
@@ -15,22 +13,11 @@ install_fan_control() {
     echo "Installing required packages..."
     sudo apt update
     sudo apt install -y python3 python3-pip jq
-    pip3 install RPi.GPIO
 
-    # Download the Python fan control script
-    echo "Downloading fan control script..."
-    sudo wget -O $SCRIPT_FILE "$GITHUB_REPO/argon_fan_control.py"
-    sudo chmod +x $SCRIPT_FILE
-
-    # Download the gpio control script
-    echo "Downloading GPIO control script..."
-    sudo wget -O $GPIO_CONTROL_FILE "$GITHUB_REPO/gpio_control.py"
-    sudo chmod +x $GPIO_CONTROL_FILE
-
-    # Download the argon command script
-    echo "Downloading argon command script..."
-    sudo wget -O $ARGON_CMD "$GITHUB_REPO/argon"
-    sudo chmod +x $ARGON_CMD
+    # Download the fan command script
+    echo "Downloading fan command script..."
+    sudo wget -O $FAN_CMD "$GITHUB_REPO/fan"
+    sudo chmod +x $FAN_CMD
 
     # Create a default configuration file
     echo "Creating default configuration file..."
@@ -41,12 +28,12 @@ install_fan_control() {
     echo "Creating systemd service..."
     sudo bash -c "cat <<EOT > $SERVICE_FILE
 [Unit]
-Description=Argon Fan Control Service
+Description=Fan Control Service
 After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 $SCRIPT_FILE
+ExecStart=/usr/local/bin/fan -speed
 Restart=on-failure
 User=root
 
@@ -87,17 +74,9 @@ uninstall_fan_control() {
     echo "Reloading systemd daemon..."
     sudo systemctl daemon-reload
 
-    # Remove the fan control script
-    echo "Removing the fan control script..."
-    sudo rm -f $SCRIPT_FILE
-
-    # Remove the gpio control script
-    echo "Removing the GPIO control script..."
-    sudo rm -f $GPIO_CONTROL_FILE
-
-    # Remove the argon command script
-    echo "Removing the argon command script..."
-    sudo rm -f $ARGON_CMD
+    # Remove the fan command script
+    echo "Removing the fan command script..."
+    sudo rm -f $FAN_CMD
 
     # Remove the configuration file
     echo "Removing the configuration file..."
