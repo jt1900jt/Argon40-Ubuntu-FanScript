@@ -17,6 +17,8 @@ install_fan_control() {
     # Download the fan command script
     echo "Downloading fan command script..."
     sudo wget -O $FAN_CMD "$GITHUB_REPO/fan"
+    
+    # Ensure that the fan command script is executable
     sudo chmod +x $FAN_CMD
 
     # Create a default configuration file
@@ -33,7 +35,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/fan -speed
+ExecStart=$FAN_CMD -speed
 Restart=on-failure
 User=root
 
