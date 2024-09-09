@@ -5,7 +5,7 @@ GITHUB_REPO="https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript
 SCRIPT_FILE="/usr/local/bin/argon_fan_control.py"
 CONFIG_FILE="/etc/argon_fan_config.json"
 SERVICE_FILE="/etc/systemd/system/argon_fan_control.service"
-ARGON_CMD="/usr/local/bin/argon"  # Add this to update the argon command itself
+ARGON_CMD="/usr/local/bin/argon"
 
 # Function to update the script from GitHub
 update_fan_control() {
@@ -34,7 +34,7 @@ update_fan_control() {
 get_cpu_temp() {
     temp=$(vcgencmd measure_temp | sed 's/[^0-9.]//g')
     if [ -n "$temp" ]; then
-        echo "$temp"
+        echo "Current CPU temperature: $temp°C"
     else
         echo "Failed to retrieve CPU temperature."
         exit 1
@@ -60,12 +60,37 @@ get_fan_speed() {
     fi
 }
 
+# Function to update hysteresis value
+update_hysteresis() {
+    if [ -z "$1" ]; then
+        echo "Usage: argon -h hysteresis_value"
+        exit 1
+    fi
+
+    if ! [[ "$1" =~ ^[0-9]+$ ]]; then
+        echo "Invalid hysteresis value. Please enter a numeric value."
+        exit 1
+    fi
+
+    local hysteresis=$1
+    fan_speeds=$(jq '.fan_speeds' $CONFIG_FILE)
+
+    echo "{ \"fan_speeds\": $fan_speeds, \"hysteresis\": $hysteresis }" > $CONFIG_FILE
+    sudo chmod 644 $CONFIG_FILE
+
+    echo "Hysteresis updated to $hysteresis°C."
+}
+
 # Parse command line arguments
 if [ "$1" == "-update" ]; then
     update_fan_control
 elif [ "$1" == "-speed" ]; then
     get_fan_speed
+elif [ "$1" == "-temp" ]; then
+    get_cpu_temp
+elif [ "$1" == "-h" ]; then
+    update_hysteresis "$2"
 else
-    echo "Usage: argon -update, argon -speed"
+    echo "Usage: argon -update, argon -speed, argon -temp, argon -h hysteresis_value"
     exit 1
 fi
