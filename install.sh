@@ -35,7 +35,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=$FAN_CMD -speed
+ExecStart=$FAN_CMD -poll
 Restart=on-failure
 User=root
 
