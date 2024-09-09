@@ -1,10 +1,10 @@
 {
   "fan_speeds": {
-    "off": 55,
-    "low": 60,
-    "medium": 68,
-    "high": 75,
-    "full": 80
+    "off": 40,
+    "low": 45,
+    "medium": 50,
+    "high": 55,
+    "full": 60
   },
-  "hysteresis": 2
+  "hysteresis": 3
 }
