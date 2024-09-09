@@ -6,7 +6,6 @@ SCRIPT_FILE="/usr/local/bin/argon_fan_control.py"
 CONFIG_FILE="/etc/argon_fan_config.json"
 SERVICE_FILE="/etc/systemd/system/argon_fan_control.service"
 ARGON_CMD="/usr/local/bin/argon"
-FAN_PIN=4  # Update this to the correct GPIO pin for your fan
 
 # Function to update the script from GitHub
 update_fan_control() {
@@ -67,18 +66,9 @@ stop_fan_service() {
     sudo systemctl stop argon_fan_control.service
 
     echo "Turning off the fan (setting speed to 0)..."
-
-    # Check if GPIO pin is already exported, if not, export it
-    if [ ! -d "/sys/class/gpio/gpio$FAN_PIN" ]; then
-        echo "$FAN_PIN" > /sys/class/gpio/export
-        sleep 1  # Give the system a moment to set up the pin
-    fi
-
-    # Set the direction of the GPIO pin to output
-    echo "out" > /sys/class/gpio/gpio$FAN_PIN/direction
-
-    # Set the value to 0 (turn off the fan)
-    echo "0" > /sys/class/gpio/gpio$FAN_PIN/value
+    
+    # Call the Python script to turn off the fan
+    sudo python3 /usr/local/bin/gpio_control.py
 
     echo "Fan control service stopped and fan turned off."
 }
