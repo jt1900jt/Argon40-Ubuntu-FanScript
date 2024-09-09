@@ -6,6 +6,7 @@ CONFIG_FILE="/etc/fan_config.json"
 FAN_CONTROL_FILE="/sys/class/thermal/cooling_device0/cur_state"
 TEMP_COMMAND="/usr/bin/vcgencmd measure_temp"
 SERVICE_NAME="fan_control"
+POLL_INTERVAL=60  # Time in seconds between temperature checks
 
 # Function to load configuration from config.json
 load_config() {
@@ -44,6 +45,12 @@ set_fan_speed() {
     fi
 }
 
+# Function to restart the fan control service
+restart_fan_service() {
+    echo "Restarting the fan control service..."
+    sudo systemctl restart $SERVICE_NAME
+}
+
 # Function to update fan configuration from the command line
 update_fan_config() {
     if [ -z "$1" ]; then
@@ -70,6 +77,7 @@ update_fan_config() {
     sudo chmod 644 $CONFIG_FILE
 
     echo "Fan speed configuration updated."
+    restart_fan_service  # Restart the service to apply the new configuration
 }
 
 # Function to update hysteresis value
@@ -90,6 +98,7 @@ update_hysteresis() {
     sudo chmod 644 $CONFIG_FILE
 
     echo "Hysteresis updated to $hysteresis°C."
+    restart_fan_service  # Restart the service to apply the new hysteresis
 }
 
 # Function to stop the fan control service
@@ -119,16 +128,78 @@ start_fan_service() {
 show_fan_config() {
     echo "Current Fan Configuration:"
     jq '.' $CONFIG_FILE
+
+    # Check the current fan speed and display it as "off," "low," "medium," "high," or "full"
+    current_fan_speed=$(cat $FAN_CONTROL_FILE)
+
+    case "$current_fan_speed" in
+        0)
+            fan_speed="off"
+            ;;
+        1)
+            fan_speed="low"
+            ;;
+        2)
+            fan_speed="medium"
+            ;;
+        3)
+            fan_speed="high"
+            ;;
+        4)
+            fan_speed="full"
+            ;;
+        *)
+            fan_speed="unknown"
+            ;;
+    esac
+
+    echo "Current Fan Speed: $fan_speed"
+}
+
+# Function to check the current fan status
+show_fan_status() {
+    current_temp=$(get_cpu_temp)
+    echo "Current CPU temperature: $current_temp°C"
+
+    current_fan_speed=$(cat $FAN_CONTROL_FILE)
+    case "$current_fan_speed" in
+        0)
+            fan_speed="off"
+            ;;
+        1)
+            fan_speed="low"
+            ;;
+        2)
+            fan_speed="medium"
+            ;;
+        3)
+            fan_speed="high"
+            ;;
+        4)
+            fan_speed="full"
+            ;;
+        *)
+            fan_speed="unknown"
+            ;;
+    esac
+
+    echo "Current Fan Speed: $fan_speed"
+}
+
+# Polling loop for checking the temperature every 60 seconds
+poll_temperature() {
+    while true; do
+        load_config
+        current_temp=$(get_cpu_temp)
+        echo "Current CPU temperature: $current_temp°C"
+        set_fan_speed $current_temp
+        sleep $POLL_INTERVAL  # Wait for the specified polling interval before checking again
+    done
 }
 
 # Parse command line arguments
-if [ "$1" == "-speed" ]; then
-    load_config
-    current_temp=$(get_cpu_temp)
-    echo "Current CPU temperature: $current_temp°C"
-    set_fan_speed $current_temp
-elif [ "$1" == "-temp" ]; then
-    get_cpu_temp
+if [ "$1" == "-status" ]; then
+    show_fan_status  # Show current status of CPU temp and fan speed
 elif [ "$1" == "-config" ]; then
     update_fan_config "$2"
 elif [ "$1" == "-h" ]; then
@@ -139,7 +210,9 @@ elif [ "$1" == "-stop" ]; then
     stop_fan_service
 elif [ "$1" == "-start" ]; then
     start_fan_service
+elif [ "$1" == "-poll" ]; then
+    poll_temperature  # Start polling for temperature in a loop
 else
-    echo "Usage: fan -speed, fan -temp, fan -config off:temp,low:temp,medium:temp,high:temp,full:temp, fan -h hysteresis_value, fan -show, fan -stop, fan -start"
+    echo "Usage: fan -status, fan -config off:temp,low:temp,medium:temp,high:temp,full:temp, fan -h hysteresis_value, fan -show, fan -stop, fan -start, fan -poll"
     exit 1
 fi
