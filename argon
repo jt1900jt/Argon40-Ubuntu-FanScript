@@ -67,7 +67,18 @@ stop_fan_service() {
     sudo systemctl stop argon_fan_control.service
 
     echo "Turning off the fan (setting speed to 0)..."
-    echo "0" > /sys/class/gpio/gpio$FAN_PIN/value  # Ensure this writes to the correct pin
+
+    # Check if GPIO pin is already exported, if not, export it
+    if [ ! -d "/sys/class/gpio/gpio$FAN_PIN" ]; then
+        echo "$FAN_PIN" > /sys/class/gpio/export
+        sleep 1  # Give the system a moment to set up the pin
+    fi
+
+    # Set the direction of the GPIO pin to output
+    echo "out" > /sys/class/gpio/gpio$FAN_PIN/direction
+
+    # Set the value to 0 (turn off the fan)
+    echo "0" > /sys/class/gpio/gpio$FAN_PIN/value
 
     echo "Fan control service stopped and fan turned off."
 }
@@ -82,6 +93,61 @@ start_fan_service() {
     else
         echo "Failed to start the fan control service."
     fi
+}
+
+# Function to update hysteresis value
+update_hysteresis() {
+    if [ -z "$1" ]; then
+        echo "Usage: argon -h hysteresis_value"
+        exit 1
+    fi
+
+    if ! [[ "$1" =~ ^[0-9]+$ ]]; then
+        echo "Invalid hysteresis value. Please enter a numeric value."
+        exit 1
+    fi
+
+    local hysteresis=$1
+    fan_speeds=$(jq '.fan_speeds' $CONFIG_FILE)
+
+    echo "{ \"fan_speeds\": $fan_speeds, \"hysteresis\": $hysteresis }" > $CONFIG_FILE
+    sudo chmod 644 $CONFIG_FILE
+
+    echo "Hysteresis updated to $hysteresis°C."
+}
+
+# Function to update fan speed configuration
+update_fan_config() {
+    if [ -z "$1" ]; then
+        echo "Usage: argon -config temp:fanspeed,temp1:fanspeed1"
+        exit 1
+    fi
+
+    IFS=',' read -ra PAIRS <<< "$1"
+    declare -A fan_speeds
+    for pair in "${PAIRS[@]}"; do
+        IFS=':' read -r temp speed <<< "$pair"
+        if [[ -z "$temp" || -z "$speed" ]]; then
+            echo "Invalid format for configuration. Use temp:fanspeed format."
+            exit 1
+        fi
+        fan_speeds["$temp"]="$speed"
+    done
+
+    echo "Updating fan speed configuration..."
+    echo "{ \"fan_speeds\": {" > /tmp/fan_config.tmp
+    for temp in "${!fan_speeds[@]}"; do
+        echo "\"$temp\": ${fan_speeds[$temp]}," >> /tmp/fan_config.tmp
+    done
+    sed -i '$ s/,$//' /tmp/fan_config.tmp  # Remove trailing comma
+    echo "}, \"hysteresis\": 5 }" >> /tmp/fan_config.tmp  # Keep the existing hysteresis
+
+    sudo mv /tmp/fan_config.tmp $CONFIG_FILE
+    sudo chmod 644 $CONFIG_FILE
+
+    # Restart the service to apply the changes
+    sudo systemctl restart argon_fan_control.service
+    echo "Fan speed configuration updated successfully."
 }
 
 # Function to show the current fan configuration in a readable format
