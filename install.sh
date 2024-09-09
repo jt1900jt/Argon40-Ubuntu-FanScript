@@ -84,6 +84,9 @@ uninstall_fan_control() {
     # Remove the fan control script
     echo "Removing the fan control script..."
     sudo rm -f $SCRIPT_FILE
+
+    # Remove the argon command script
+    echo "Removing the argon command script..."
     sudo rm -f $ARGON_CMD
 
     # Remove the configuration file
