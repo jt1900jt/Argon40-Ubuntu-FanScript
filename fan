@@ -33,23 +33,40 @@ get_cpu_temp() {
 # Optimized function to set fan speed based on temperature
 set_fan_speed() {
     local temp=$1
-    local new_fan_speed
+    local new_fan_speed=$last_fan_speed  # Initialize with the current fan speed
 
-    if [[ "$temp" -lt "$off_temp" ]]; then
-        new_fan_speed=0
-    elif [[ "$temp" -lt "$low_temp" ]]; then
-        new_fan_speed=1
-    elif [[ "$temp" -lt "$medium_temp" ]]; then
-        new_fan_speed=2
-    elif [[ "$temp" -lt "$high_temp" ]]; then
-        new_fan_speed=3
-    else
-        new_fan_speed=4
+    echo "Current Temp: $temp"
+    echo "Thresholds - Off: $off_temp, Low: $low_temp, Medium: $medium_temp, High: $high_temp, Full: $full_temp"
+    echo "Hysteresis: $hysteresis"
+
+    # Fan speed ramping up (when temp rises above the threshold)
+    if [[ "$temp" -ge "$full_temp" ]]; then
+        new_fan_speed=4  # Full
+    elif [[ "$temp" -ge "$high_temp" ]]; then
+        new_fan_speed=3  # High
+    elif [[ "$temp" -ge "$medium_temp" ]]; then
+        new_fan_speed=2  # Medium
+    elif [[ "$temp" -ge "$low_temp" ]]; then
+        new_fan_speed=1  # Low
+
+    # Fan speed ramping down (when temp drops below threshold minus hysteresis)
+    elif [[ "$temp" -le "$((low_temp - hysteresis))" ]]; then
+        new_fan_speed=0  # Off
+    elif [[ "$temp" -le "$((medium_temp - hysteresis))" ]]; then
+        new_fan_speed=1  # Low
+    elif [[ "$temp" -le "$((high_temp - hysteresis))" ]]; then
+        new_fan_speed=2  # Medium
+    elif [[ "$temp" -le "$((full_temp - hysteresis))" ]]; then
+        new_fan_speed=3  # High
     fi
 
+    # Only update fan speed if it has changed
     if [[ "$new_fan_speed" != "$last_fan_speed" ]]; then
+        echo "Changing fan speed to $new_fan_speed"
         echo $new_fan_speed | sudo tee $FAN_CONTROL_FILE > /dev/null
         last_fan_speed=$new_fan_speed
+    else
+        echo "Fan speed remains unchanged at $new_fan_speed"
     fi
 }
 
