@@ -2,10 +2,10 @@
 
 # Define constants
 SERVICE_NAME="argon_fan_control"
-SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
+SERVICE_FILE="/etc/systemd/system/fancontrol.service"
 CONFIG_FILE="/etc/argon_fan_config.json"
 SCRIPT_FILE="/usr/local/bin/argon_fan_control.py"
-GITHUB_REPO="https://raw.githubusercontent.com/your-username/your-repo/main"
+GITHUB_REPO="https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript/main"
 
 # Install necessary packages
 echo "Installing required packages..."
