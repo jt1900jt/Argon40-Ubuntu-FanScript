@@ -3,7 +3,7 @@
 # Define constants
 CONFIG_FILE="/etc/argon_fan_config.json"
 CPU_TEMP_CMD="vcgencmd measure_temp"  # Command to get the current CPU temperature
-GITHUB_REPO="https://raw.githubusercontent.com/your-username/your-repo/main"
+GITHUB_REPO="https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript/main"
 SCRIPT_FILE="/usr/local/bin/argon_fan_control.py"
 CONFIG_FILE="/etc/argon_fan_config.json"
 
