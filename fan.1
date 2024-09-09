@@ -1,1 +1,65 @@
+.TH FAN 1 "2024-09-09" "Version 1.0" "Fan Control Utility"
+.SH NAME
+fan \- Raspberry Pi Fan Control Script
+.SH SYNOPSIS
+.B fan
+[\-status | \-config off:temp,low:temp,medium:temp,high:temp,full:temp | \-h hysteresis_value | \-show | \-start | \-stop | \-poll | \-update | \-uninstall]
+.SH DESCRIPTION
+The
+.B fan
+command is used to control a Raspberry Pi fan based on CPU temperature. It provides options for setting temperature thresholds, configuring hysteresis, and managing the fan control service.
+.SH OPTIONS
+.TP
+.B \-status
+Displays the current CPU temperature and fan speed.
+
+.TP
+.B \-config off:temp,low:temp,medium:temp,high:temp,full:temp
+Updates the fan speed configuration. The user can specify temperature thresholds for turning the fan off, and for low, medium, high, and full fan speeds.
+
+.TP
+.B \-h hysteresis_value
+Updates the hysteresis value in degrees Celsius to prevent frequent fan speed changes.
+
+.TP
+.B \-show
+Displays the current fan speed configuration and the current fan status (off, low, medium, high, or full).
+
+.TP
+.B \-start
+Starts the fan control service.
+
+.TP
+.B \-stop
+Stops the fan control service and turns the fan off.
+
+.TP
+.B \-poll
+Starts polling the temperature continuously and adjusts the fan speed accordingly.
+
+.TP
+.B \-update
+Downloads and applies the latest fan control script and configuration from GitHub.
+
+.TP
+.B \-uninstall
+Uninstalls the fan control service, removes the script, and deletes configuration files.
+
+.SH EXAMPLES
+.TP
+.B fan \-status
+Displays the current CPU temperature and fan speed.
+
+.TP
+.B fan \-config off:55,low:60,medium:68,high:75,full:80
+Sets custom temperature thresholds for fan speeds.
+
+.TP
+.B fan \-h 5
+Updates the hysteresis value to 5 degrees Celsius.
+
+.SH AUTHOR
+Written by the Raspberry Pi Fan Control Project.
+.SH BUGS
+No known bugs. Please report issues to the project's GitHub repository.
 
