@@ -24,10 +24,10 @@ load_config() {
     hysteresis=$(jq '.hysteresis' $CONFIG_FILE)
 }
 
-# Function to get the current CPU temperature (directly from sysfs for efficiency)
+# Function to get the current CPU temperature using vcgencmd
 get_cpu_temp() {
-    temp=$(cat /sys/class/thermal/thermal_zone0/temp)
-    echo "$((temp / 1000))"  # Converts millidegrees to degrees
+    temp=$($TEMP_COMMAND | egrep -o '[0-9]*\.[0-9]*')  # Use vcgencmd measure_temp
+    echo "$temp"
 }
 
 # Optimized function to set fan speed based on temperature
@@ -47,7 +47,6 @@ set_fan_speed() {
         new_fan_speed=4
     fi
 
-    # Write the new fan speed only if it has changed
     if [[ "$new_fan_speed" != "$last_fan_speed" ]]; then
         echo $new_fan_speed | sudo tee $FAN_CONTROL_FILE > /dev/null
         last_fan_speed=$new_fan_speed
