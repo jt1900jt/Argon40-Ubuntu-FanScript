@@ -81,6 +81,55 @@ update_hysteresis() {
     echo "Hysteresis updated to $hysteresis°C."
 }
 
+# Function to update fan speed configuration
+update_fan_config() {
+    if [ -z "$1" ]; then
+        echo "Usage: argon -config temp:fanspeed,temp1:fanspeed1"
+        exit 1
+    fi
+
+    IFS=',' read -ra PAIRS <<< "$1"
+    declare -A fan_speeds
+    for pair in "${PAIRS[@]}"; do
+        IFS=':' read -r temp speed <<< "$pair"
+        if [[ -z "$temp" || -z "$speed" ]]; then
+            echo "Invalid format for configuration. Use temp:fanspeed format."
+            exit 1
+        fi
+        fan_speeds["$temp"]="$speed"
+    done
+
+    echo "Updating fan speed configuration..."
+    echo "{ \"fan_speeds\": {" > /tmp/fan_config.tmp
+    for temp in "${!fan_speeds[@]}"; do
+        echo "\"$temp\": ${fan_speeds[$temp]}," >> /tmp/fan_config.tmp
+    done
+    sed -i '$ s/,$//' /tmp/fan_config.tmp  # Remove trailing comma
+    echo "}, \"hysteresis\": 5 }" >> /tmp/fan_config.tmp  # Keep the existing hysteresis
+
+    sudo mv /tmp/fan_config.tmp $CONFIG_FILE
+    sudo chmod 644 $CONFIG_FILE
+
+    # Restart the service to apply the changes
+    sudo systemctl restart argon_fan_control.service
+    echo "Fan speed configuration updated successfully."
+}
+
+# Function to show the current fan configuration in a readable format
+show_fan_config() {
+    echo "Current Fan Configuration:"
+    fan_speeds=$(jq -r '.fan_speeds' $CONFIG_FILE)
+    hysteresis=$(jq -r '.hysteresis' $CONFIG_FILE)
+
+    echo "Fan Speeds:"
+    for temp in $(echo $fan_speeds | jq -r 'keys[]'); do
+        speed=$(echo $fan_speeds | jq -r --arg temp "$temp" '.[$temp]')
+        echo "  Temperature: $temp°C => Fan Speed: $speed%"
+    done
+
+    echo "Hysteresis: $hysteresis°C"
+}
+
 # Parse command line arguments
 if [ "$1" == "-update" ]; then
     update_fan_control
@@ -90,7 +139,11 @@ elif [ "$1" == "-temp" ]; then
     get_cpu_temp
 elif [ "$1" == "-h" ]; then
     update_hysteresis "$2"
+elif [ "$1" == "-config" ]; then
+    update_fan_config "$2"
+elif [ "$1" == "-show" ]; then
+    show_fan_config
 else
-    echo "Usage: argon -update, argon -speed, argon -temp, argon -h hysteresis_value"
+    echo "Usage: argon -update, argon -speed, argon -temp, argon -h hysteresis_value, argon -config temp:fanspeed,temp1:fanspeed1, argon -show"
     exit 1
 fi
