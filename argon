@@ -6,7 +6,6 @@ SCRIPT_FILE="/usr/local/bin/argon_fan_control.py"
 CONFIG_FILE="/etc/argon_fan_config.json"
 SERVICE_FILE="/etc/systemd/system/argon_fan_control.service"
 ARGON_CMD="/usr/local/bin/argon"
-GPIO_CONTROL_FILE="/usr/local/bin/gpio_control.py"
 
 # Function to update the script from GitHub
 update_fan_control() {
@@ -15,10 +14,6 @@ update_fan_control() {
     # Download the latest fan control script
     sudo wget -O $SCRIPT_FILE "$GITHUB_REPO/argon_fan_control.py"
     sudo chmod +x $SCRIPT_FILE
-
-    # Download the latest gpio control script
-    sudo wget -O $GPIO_CONTROL_FILE "$GITHUB_REPO/gpio_control.py"
-    sudo chmod +x $GPIO_CONTROL_FILE
 
     # Download the latest configuration file
     sudo wget -O $CONFIG_FILE "$GITHUB_REPO/fan_config.json"
@@ -32,7 +27,7 @@ update_fan_control() {
     echo "Reloading the systemd service..."
     sudo systemctl daemon-reload && sudo systemctl restart argon_fan_control.service
 
-    echo "Update complete. The argon command, fan control script, and gpio control script have been updated."
+    echo "Update complete. The argon command and fan control script have been updated."
 }
 
 # Function to get the current CPU temperature
@@ -72,8 +67,8 @@ stop_fan_service() {
 
     echo "Turning off the fan (setting speed to 0)..."
     
-    # Call the Python script to turn off the fan using lgpio
-    sudo python3 /usr/local/bin/gpio_control.py off
+    # Call the Python script to turn off the fan
+    sudo python3 /usr/local/bin/gpio_control.py
 
     echo "Fan control service stopped and fan turned off."
 }
