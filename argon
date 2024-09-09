@@ -5,6 +5,7 @@ GITHUB_REPO="https://raw.githubusercontent.com/jt1900jt/Argon40-Ubuntu-FanScript
 SCRIPT_FILE="/usr/local/bin/argon_fan_control.py"
 CONFIG_FILE="/etc/argon_fan_config.json"
 SERVICE_FILE="/etc/systemd/system/argon_fan_control.service"
+ARGON_CMD="/usr/local/bin/argon"  # Add this to update the argon command itself
 
 # Function to update the script from GitHub
 update_fan_control() {
@@ -18,11 +19,15 @@ update_fan_control() {
     sudo wget -O $CONFIG_FILE "$GITHUB_REPO/fan_config.json"
     sudo chmod 644 $CONFIG_FILE
 
+    # Download the latest argon command script (this script itself)
+    sudo wget -O $ARGON_CMD "$GITHUB_REPO/argon"
+    sudo chmod +x $ARGON_CMD
+
     # Reload the systemd service to apply the updates
     echo "Reloading the systemd service..."
     sudo systemctl daemon-reload && sudo systemctl restart argon_fan_control.service
 
-    echo "Update complete."
+    echo "Update complete. The argon command and fan control script have been updated."
 }
 
 # Function to get the current CPU temperature
@@ -38,10 +43,7 @@ get_cpu_temp() {
 
 # Function to return the current fan speed based on the temperature
 get_fan_speed() {
-    # Get the current CPU temperature
     current_temp=$(get_cpu_temp)
-
-    # Read the fan speed configuration from the config file
     fan_speeds=$(jq -r '.fan_speeds' $CONFIG_FILE)
 
     current_speed=0
