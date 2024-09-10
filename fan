@@ -35,10 +35,9 @@ set_fan_speed() {
     local temp=$1
     local new_fan_speed=$last_fan_speed  # Initialize with the last fan speed
 
-    echo "DEBUG: Current Temp: $temp°C"
-    echo "DEBUG: Thresholds - Off: $off_temp, Low: $low_temp, Medium: $medium_temp, High: $high_temp, Full: $full_temp"
-    echo "DEBUG: Hysteresis: $hysteresis°C"
-    echo "DEBUG: Current Fan Speed: $last_fan_speed"
+    echo "Current Temp: $temp°C"
+    echo "Thresholds - Off: $off_temp, Low: $low_temp, Medium: $medium_temp, High: $high_temp, Full: $full_temp"
+    echo "Hysteresis: $hysteresis°C"
 
     # Fan speed ramping up (when temp rises above the threshold)
     if (( $(echo "$temp >= $full_temp" | bc -l) )); then
