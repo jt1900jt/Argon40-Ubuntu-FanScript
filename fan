@@ -7,7 +7,7 @@ FAN_CONTROL_FILE="/sys/class/thermal/cooling_device0/cur_state"
 TEMP_COMMAND="/usr/bin/vcgencmd measure_temp"
 SERVICE_NAME="fan_control"
 FAN_CMD="/usr/local/bin/fan"
-POLL_INTERVAL=60  # Time in seconds between temperature checks
+POLL_INTERVAL=10  # Time in seconds between temperature checks (Updated to 10s as requested)
 last_fan_speed=-1  # Cache the last fan speed to avoid unnecessary I/O
 
 # Function to load configuration from config.json (runs once per poll cycle)
@@ -211,7 +211,7 @@ show_fan_status() {
     echo "Current Fan Speed: $fan_speed"
 }
 
-# Polling loop for checking the temperature every 60 seconds
+# Polling loop for checking the temperature every 10 seconds (Updated to 10 seconds as requested)
 poll_temperature() {
     while true; do
         load_config  # Load configuration once per cycle
