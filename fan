@@ -7,7 +7,7 @@ FAN_CONTROL_FILE="/sys/class/thermal/cooling_device0/cur_state"
 TEMP_COMMAND="/usr/bin/vcgencmd measure_temp"
 SERVICE_NAME="fan_control"
 FAN_CMD="/usr/local/bin/fan"
-POLL_INTERVAL=10  # Time in seconds between temperature checks
+POLL_INTERVAL=60  # Time in seconds between temperature checks
 last_fan_speed=-1  # Cache the last fan speed to avoid unnecessary I/O
 
 # Function to load configuration from config.json (runs once per poll cycle)
@@ -35,7 +35,6 @@ set_fan_speed() {
     local temp=$1
     local new_fan_speed=$last_fan_speed  # Initialize with the current fan speed
 
-    # Debugging information
     echo "DEBUG: Current Temp: $temp°C" | sudo tee -a /var/log/fan_control.log
     echo "DEBUG: Thresholds - Off: $off_temp, Low: $low_temp, Medium: $medium_temp, High: $high_temp, Full: $full_temp" | sudo tee -a /var/log/fan_control.log
     echo "DEBUG: Hysteresis: $hysteresis°C" | sudo tee -a /var/log/fan_control.log
@@ -222,18 +221,13 @@ show_fan_status() {
     echo "Current Fan Speed: $fan_speed"
 }
 
-# Polling loop for checking the temperature every 10 seconds
+# Polling loop for checking the temperature every 60 seconds
 poll_temperature() {
     while true; do
-        load_config  # Load the config at each poll cycle
-        current_temp=$(get_cpu_temp)  # Get the current temperature
-        echo "DEBUG: Current temperature: $current_temp°C" | sudo tee -a /var/log/fan_control.log
-
-        # Call set_fan_speed with the current temperature
-        echo "DEBUG: Calling set_fan_speed with current_temp: $current_temp" | sudo tee -a /var/log/fan_control.log
-        set_fan_speed $current_temp  # Adjust the fan speed based on the current temperature
-
-        sleep $POLL_INTERVAL  # Wait for the specified polling interval before checking again
+        load_config  # Load configuration once per cycle
+        current_temp=$(get_cpu_temp)  # Get current temperature
+        set_fan_speed $current_temp   # Adjust fan speed
+        sleep $POLL_INTERVAL  # Wait for the polling interval
     done
 }
 
