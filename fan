@@ -35,29 +35,39 @@ set_fan_speed() {
     local temp=$1
     local new_fan_speed=$last_fan_speed  # Initialize with the last fan speed
 
-    echo "Current Temp: $temp°C"
-    echo "Thresholds - Off: $off_temp, Low: $low_temp, Medium: $medium_temp, High: $high_temp, Full: $full_temp"
-    echo "Hysteresis: $hysteresis°C"
+    echo "DEBUG: Current Temp: $temp°C"
+    echo "DEBUG: Thresholds - Off: $off_temp, Low: $low_temp, Medium: $medium_temp, High: $high_temp, Full: $full_temp"
+    echo "DEBUG: Hysteresis: $hysteresis°C"
+    echo "DEBUG: Current Fan Speed: $last_fan_speed"
 
     # Fan speed ramping up (when temp rises above the threshold)
     if (( $(echo "$temp >= $full_temp" | bc -l) )); then
         new_fan_speed=4  # Full
+        echo "DEBUG: Fan set to FULL"
     elif (( $(echo "$temp >= $high_temp" | bc -l) )); then
         new_fan_speed=3  # High
+        echo "DEBUG: Fan set to HIGH"
     elif (( $(echo "$temp >= $medium_temp" | bc -l) )); then
         new_fan_speed=2  # Medium
+        echo "DEBUG: Fan set to MEDIUM"
     elif (( $(echo "$temp >= $low_temp" | bc -l) )); then
         new_fan_speed=1  # Low
+        echo "DEBUG: Fan set to LOW"
+    fi
 
     # Fan speed ramping down (when temp drops below threshold minus hysteresis)
-    elif (( $(echo "$temp <= $((low_temp - hysteresis))" | bc -l) )); then
+    if (( $(echo "$temp <= $((low_temp - hysteresis))" | bc -l) )); then
         new_fan_speed=0  # Off
+        echo "DEBUG: Fan set to OFF"
     elif (( $(echo "$temp <= $((medium_temp - hysteresis))" | bc -l) )); then
         new_fan_speed=1  # Low
+        echo "DEBUG: Fan set to LOW (hysteresis)"
     elif (( $(echo "$temp <= $((high_temp - hysteresis))" | bc -l) )); then
         new_fan_speed=2  # Medium
+        echo "DEBUG: Fan set to MEDIUM (hysteresis)"
     elif (( $(echo "$temp <= $((full_temp - hysteresis))" | bc -l) )); then
         new_fan_speed=3  # High
+        echo "DEBUG: Fan set to HIGH (hysteresis)"
     fi
 
     # Only update fan speed if it has changed
@@ -66,7 +76,7 @@ set_fan_speed() {
         echo $new_fan_speed | sudo tee $FAN_CONTROL_FILE > /dev/null
         last_fan_speed=$new_fan_speed
     else
-        echo "Fan speed remains unchanged at $new_fan_speed"
+        echo "DEBUG: Fan speed remains unchanged at $new_fan_speed"
     fi
 }
 
@@ -216,6 +226,8 @@ poll_temperature() {
     while true; do
         load_config  # Load configuration once per cycle
         current_temp=$(get_cpu_temp)  # Get current temperature
+        echo "DEBUG: Current temperature: $current_temp°C"
+        echo "DEBUG: Calling set_fan_speed with current_temp: $current_temp"
         set_fan_speed $current_temp   # Adjust fan speed
         sleep $POLL_INTERVAL  # Wait for the polling interval
     done
