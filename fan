@@ -80,7 +80,7 @@ set_fan_speed() {
         fi
     fi
 
-    # Ensure new_fan_speed is valid and not empty or invalid
+    # Ensure new_fan_speed is valid and within the valid range
     if [[ "$new_fan_speed" -lt 0 || "$new_fan_speed" -gt 4 ]]; then
         echo "ERROR: Invalid new_fan_speed detected: $new_fan_speed" | sudo tee -a /var/log/fan_control.log
         new_fan_speed=0  # Default to off in case of error
