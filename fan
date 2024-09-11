@@ -33,7 +33,7 @@ get_cpu_temp() {
 # Function to set fan speed based on temperature
 set_fan_speed() {
     local temp=$1
-    local new_fan_speed=$last_fan_speed  # Initialize with the current fan speed
+    local new_fan_speed=0  # Initialize with a default value of 0 (OFF)
 
     # Initialize last_fan_speed with the current state of the fan
     if [[ $last_fan_speed -eq -1 ]]; then
@@ -81,7 +81,7 @@ set_fan_speed() {
     fi
 
     # Ensure new_fan_speed is valid and not empty or invalid
-    if [[ -z "$new_fan_speed" || "$new_fan_speed" -lt 0 || "$new_fan_speed" -gt 4 ]]; then
+    if [[ "$new_fan_speed" -lt 0 || "$new_fan_speed" -gt 4 ]]; then
         echo "ERROR: Invalid new_fan_speed detected: $new_fan_speed" | sudo tee -a /var/log/fan_control.log
         new_fan_speed=0  # Default to off in case of error
     fi
