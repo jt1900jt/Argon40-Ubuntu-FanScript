@@ -33,7 +33,7 @@ get_cpu_temp() {
 # Function to set fan speed based on temperature
 set_fan_speed() {
     local temp=$1
-    local new_fan_speed=0  # Initialize with a default value of 0 (OFF)
+    local new_fan_speed=$last_fan_speed  # Initialize with the current fan speed
 
     # Initialize last_fan_speed with the current state of the fan
     if [[ $last_fan_speed -eq -1 ]]; then
