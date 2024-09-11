@@ -10,7 +10,7 @@ FAN_CMD="/usr/local/bin/fan"
 POLL_INTERVAL=60  # Time in seconds between temperature checks
 last_fan_speed=-1  # Cache the last fan speed to avoid unnecessary I/O
 
-# Function to load configuration from config.json (runs once per poll cycle)
+# Function to load configuration from config.json
 load_config() {
     if [ ! -f $CONFIG_FILE ]; then
         echo "Configuration file not found! Please create $CONFIG_FILE"
@@ -30,9 +30,10 @@ get_cpu_temp() {
     echo "$temp"
 }
 
-# Optimized function to set fan speed based on temperature
+# Function to set fan speed based on temperature
 set_fan_speed() {
     local temp=$1
+    local new_fan_speed=$last_fan_speed  # Initialize with the current fan speed
 
     # Initialize last_fan_speed with the current state of the fan
     if [[ $last_fan_speed -eq -1 ]]; then
@@ -71,6 +72,12 @@ set_fan_speed() {
         fi
     fi
 
+    # Ensure new_fan_speed is valid and not empty
+    if [[ -z "$new_fan_speed" ]]; then
+        echo "ERROR: new_fan_speed is not set!" | sudo tee -a /var/log/fan_control.log
+        return 1
+    fi
+
     # Only update fan speed if it has changed
     if [[ "$new_fan_speed" != "$last_fan_speed" ]]; then
         echo "Changing fan speed to $new_fan_speed" | sudo tee -a /var/log/fan_control.log
@@ -79,6 +86,12 @@ set_fan_speed() {
     else
         echo "DEBUG: Fan speed remains unchanged at $new_fan_speed" | sudo tee -a /var/log/fan_control.log
     fi
+}
+
+# Function to restart the fan control service
+restart_fan_service() {
+    echo "Restarting the fan control service..."
+    sudo systemctl restart $SERVICE_NAME
 }
 
 # Function to update fan configuration from the command line
