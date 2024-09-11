@@ -51,24 +51,32 @@ set_fan_speed() {
     echo "DEBUG: Current Fan Speed: $last_fan_speed" | sudo tee -a /var/log/fan_control.log
 
     # Fan speed ramping up (when temp rises above the threshold)
-    if (( $(echo "$temp >= $full_temp" | bc -l) )); then
+    if [[ "$temp" -ge "$full_temp" ]]; then
         new_fan_speed=4  # Full
-    elif (( $(echo "$temp >= $high_temp" | bc -l) )); then
+        echo "DEBUG: Temp >= Full threshold, setting fan speed to FULL" | sudo tee -a /var/log/fan_control.log
+    elif [[ "$temp" -ge "$high_temp" ]]; then
         new_fan_speed=3  # High
-    elif (( $(echo "$temp >= $medium_temp" | bc -l) )); then
+        echo "DEBUG: Temp >= High threshold, setting fan speed to HIGH" | sudo tee -a /var/log/fan_control.log
+    elif [[ "$temp" -ge "$medium_temp" ]]; then
         new_fan_speed=2  # Medium
-    elif (( $(echo "$temp >= $low_temp" | bc -l) )); then
+        echo "DEBUG: Temp >= Medium threshold, setting fan speed to MEDIUM" | sudo tee -a /var/log/fan_control.log
+    elif [[ "$temp" -ge "$low_temp" ]]; then
         new_fan_speed=1  # Low
+        echo "DEBUG: Temp >= Low threshold, setting fan speed to LOW" | sudo tee -a /var/log/fan_control.log
     else
         # Fan speed ramping down (temperature below threshold minus hysteresis)
-        if (( $(echo "$temp <= $((low_temp - hysteresis))" | bc -l) )); then
+        if [[ "$temp" -le "$((low_temp - hysteresis))" ]]; then
             new_fan_speed=0  # Off
-        elif (( $(echo "$temp <= $((medium_temp - hysteresis))" | bc -l) )); then
+            echo "DEBUG: Temp <= Off threshold (after hysteresis), setting fan speed to OFF" | sudo tee -a /var/log/fan_control.log
+        elif [[ "$temp" -le "$((medium_temp - hysteresis))" ]]; then
             new_fan_speed=1  # Low
-        elif (( $(echo "$temp <= $((high_temp - hysteresis))" | bc -l) )); then
+            echo "DEBUG: Temp <= Low threshold (after hysteresis), setting fan speed to LOW" | sudo tee -a /var/log/fan_control.log
+        elif [[ "$temp" -le "$((high_temp - hysteresis))" ]]; then
             new_fan_speed=2  # Medium
-        elif (( $(echo "$temp <= $((full_temp - hysteresis))" | bc -l) )); then
+            echo "DEBUG: Temp <= Medium threshold (after hysteresis), setting fan speed to MEDIUM" | sudo tee -a /var/log/fan_control.log
+        elif [[ "$temp" -le "$((full_temp - hysteresis))" ]]; then
             new_fan_speed=3  # High
+            echo "DEBUG: Temp <= High threshold (after hysteresis), setting fan speed to HIGH" | sudo tee -a /var/log/fan_control.log
         fi
     fi
 
