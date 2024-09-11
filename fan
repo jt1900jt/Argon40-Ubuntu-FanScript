@@ -49,7 +49,7 @@ set_fan_speed() {
     echo "DEBUG: Hysteresis: $hysteresis°C" | sudo tee -a /var/log/fan_control.log
     echo "DEBUG: Current Fan Speed: $last_fan_speed" | sudo tee -a /var/log/fan_control.log
 
-    # Fan speed logic
+    # Fan speed ramping up (when temp rises above the threshold)
     if [[ "$temp" -ge "$full_temp" ]]; then
         new_fan_speed=4  # Full
     elif [[ "$temp" -ge "$high_temp" ]]; then
@@ -59,7 +59,16 @@ set_fan_speed() {
     elif [[ "$temp" -ge "$low_temp" ]]; then
         new_fan_speed=1  # Low
     else
-        new_fan_speed=0  # Off
+        # Only reduce speed if temperature is below the thresholds minus hysteresis
+        if [[ "$temp" -le "$((low_temp - hysteresis))" ]]; then
+            new_fan_speed=0  # Off
+        elif [[ "$temp" -le "$((medium_temp - hysteresis))" ]]; then
+            new_fan_speed=1  # Low
+        elif [[ "$temp" -le "$((high_temp - hysteresis))" ]]; then
+            new_fan_speed=2  # Medium
+        elif [[ "$temp" -le "$((full_temp - hysteresis))" ]]; then
+            new_fan_speed=3  # High
+        fi
     fi
 
     # Only update fan speed if it has changed
@@ -70,12 +79,6 @@ set_fan_speed() {
     else
         echo "DEBUG: Fan speed remains unchanged at $new_fan_speed" | sudo tee -a /var/log/fan_control.log
     fi
-}
-
-# Function to restart the fan control service
-restart_fan_service() {
-    echo "Restarting the fan control service..."
-    sudo systemctl restart $SERVICE_NAME
 }
 
 # Function to update fan configuration from the command line
