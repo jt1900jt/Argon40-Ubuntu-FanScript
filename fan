@@ -33,41 +33,33 @@ get_cpu_temp() {
 # Optimized function to set fan speed based on temperature
 set_fan_speed() {
     local temp=$1
-    local new_fan_speed=$last_fan_speed  # Initialize with the current fan speed
+
+    # Initialize last_fan_speed with the current state of the fan
+    if [[ $last_fan_speed -eq -1 ]]; then
+        last_fan_speed=$(cat $FAN_CONTROL_FILE 2>/dev/null)
+        if [[ $? -ne 0 ]]; then
+            echo "ERROR: Failed to read current fan state from $FAN_CONTROL_FILE" | sudo tee -a /var/log/fan_control.log
+            last_fan_speed=0  # Default to fan off if reading fails
+        fi
+        echo "DEBUG: Initializing last_fan_speed to $last_fan_speed" | sudo tee -a /var/log/fan_control.log
+    fi
 
     echo "DEBUG: Current Temp: $temp°C" | sudo tee -a /var/log/fan_control.log
     echo "DEBUG: Thresholds - Off: $off_temp, Low: $low_temp, Medium: $medium_temp, High: $high_temp, Full: $full_temp" | sudo tee -a /var/log/fan_control.log
     echo "DEBUG: Hysteresis: $hysteresis°C" | sudo tee -a /var/log/fan_control.log
     echo "DEBUG: Current Fan Speed: $last_fan_speed" | sudo tee -a /var/log/fan_control.log
 
-    # Fan speed ramping up (when temp rises above the threshold)
+    # Fan speed logic
     if [[ "$temp" -ge "$full_temp" ]]; then
         new_fan_speed=4  # Full
-        echo "DEBUG: Fan set to FULL" | sudo tee -a /var/log/fan_control.log
     elif [[ "$temp" -ge "$high_temp" ]]; then
         new_fan_speed=3  # High
-        echo "DEBUG: Fan set to HIGH" | sudo tee -a /var/log/fan_control.log
     elif [[ "$temp" -ge "$medium_temp" ]]; then
         new_fan_speed=2  # Medium
-        echo "DEBUG: Fan set to MEDIUM" | sudo tee -a /var/log/fan_control.log
     elif [[ "$temp" -ge "$low_temp" ]]; then
         new_fan_speed=1  # Low
-        echo "DEBUG: Fan set to LOW" | sudo tee -a /var/log/fan_control.log
-    fi
-
-    # Fan speed ramping down (when temp drops below threshold minus hysteresis)
-    if [[ "$temp" -le "$((low_temp - hysteresis))" ]]; then
+    else
         new_fan_speed=0  # Off
-        echo "DEBUG: Fan set to OFF" | sudo tee -a /var/log/fan_control.log
-    elif [[ "$temp" -le "$((medium_temp - hysteresis))" ]]; then
-        new_fan_speed=1  # Low
-        echo "DEBUG: Fan set to LOW" | sudo tee -a /var/log/fan_control.log
-    elif [[ "$temp" -le "$((high_temp - hysteresis))" ]]; then
-        new_fan_speed=2  # Medium
-        echo "DEBUG: Fan set to MEDIUM" | sudo tee -a /var/log/fan_control.log
-    elif [[ "$temp" -le "$((full_temp - hysteresis))" ]]; then
-        new_fan_speed=3  # High
-        echo "DEBUG: Fan set to HIGH" | sudo tee -a /var/log/fan_control.log
     fi
 
     # Only update fan speed if it has changed
