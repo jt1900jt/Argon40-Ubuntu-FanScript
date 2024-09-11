@@ -33,7 +33,7 @@ get_cpu_temp() {
 # Function to set fan speed based on temperature
 set_fan_speed() {
     local temp=$1
-    local new_fan_speed=$last_fan_speed  # Initialize with the current fan speed
+    local new_fan_speed=0  # Explicitly initialize new_fan_speed to 0 (off)
 
     # Initialize last_fan_speed with the current state of the fan
     if [[ $last_fan_speed -eq -1 ]]; then
@@ -59,17 +59,17 @@ set_fan_speed() {
         new_fan_speed=2  # Medium
     elif [[ "$temp" -ge "$low_temp" ]]; then
         new_fan_speed=1  # Low
-    else
-        # Fan speed ramping down (temperature below threshold minus hysteresis)
-        if [[ "$temp" -le "$((low_temp - hysteresis))" ]]; then
-            new_fan_speed=0  # Off
-        elif [[ "$temp" -le "$((medium_temp - hysteresis))" ]]; then
-            new_fan_speed=1  # Low
-        elif [[ "$temp" -le "$((high_temp - hysteresis))" ]]; then
-            new_fan_speed=2  # Medium
-        elif [[ "$temp" -le "$((full_temp - hysteresis))" ]]; then
-            new_fan_speed=3  # High
-        fi
+    fi
+
+    # Fan speed ramping down (temperature below threshold minus hysteresis)
+    if [[ "$temp" -le "$((low_temp - hysteresis))" ]]; then
+        new_fan_speed=0  # Off
+    elif [[ "$temp" -le "$((medium_temp - hysteresis))" && "$new_fan_speed" -gt 1 ]]; then
+        new_fan_speed=1  # Low
+    elif [[ "$temp" -le "$((high_temp - hysteresis))" && "$new_fan_speed" -gt 2 ]]; then
+        new_fan_speed=2  # Medium
+    elif [[ "$temp" -le "$((full_temp - hysteresis))" && "$new_fan_speed" -gt 3 ]]; then
+        new_fan_speed=3  # High
     fi
 
     # Ensure new_fan_speed is valid and within the valid range
