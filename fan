@@ -243,12 +243,15 @@ poll_temperature() {
 update_fan_control() {
     echo "Updating the fan control script and configuration from GitHub..."
 
+    # Stop the service before updating
+    stop_fan_service
+
     # Download the latest fan command script
-    sudo wget -O $FAN_CMD "$GITHUB_REPO/fan"
+    sudo wget -q -O $FAN_CMD "$GITHUB_REPO/fan"
     sudo chmod +x $FAN_CMD
 
     # Download the latest configuration file
-    sudo wget -O $CONFIG_FILE "$GITHUB_REPO/fan_config.json"
+    sudo wget -q -O $CONFIG_FILE "$GITHUB_REPO/fan_config.json"
     sudo chmod 644 $CONFIG_FILE
 
     # Reload the systemd service to apply the updates
