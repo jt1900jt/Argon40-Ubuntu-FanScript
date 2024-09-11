@@ -73,9 +73,9 @@ set_fan_speed() {
     fi
 
     # Ensure new_fan_speed is valid and not empty
-    if [[ -z "$new_fan_speed" ]]; then
-        echo "ERROR: new_fan_speed is not set!" | sudo tee -a /var/log/fan_control.log
-        return 1
+    if [[ -z "$new_fan_speed" || "$new_fan_speed" -lt 0 ]]; then
+        echo "ERROR: Invalid new_fan_speed detected: $new_fan_speed" | sudo tee -a /var/log/fan_control.log
+        new_fan_speed=0  # Default to off in case of error
     fi
 
     # Only update fan speed if it has changed
