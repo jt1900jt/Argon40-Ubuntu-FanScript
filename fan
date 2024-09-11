@@ -60,7 +60,7 @@ set_fan_speed() {
     elif [[ "$temp" -ge "$low_temp" ]]; then
         new_fan_speed=1  # Low
     else
-        # Only reduce speed if temperature is below the thresholds minus hysteresis
+        # Fan speed ramping down (temperature below threshold minus hysteresis)
         if [[ "$temp" -le "$((low_temp - hysteresis))" ]]; then
             new_fan_speed=0  # Off
         elif [[ "$temp" -le "$((medium_temp - hysteresis))" ]]; then
@@ -72,8 +72,8 @@ set_fan_speed() {
         fi
     fi
 
-    # Ensure new_fan_speed is valid and not empty
-    if [[ -z "$new_fan_speed" || "$new_fan_speed" -lt 0 ]]; then
+    # Ensure new_fan_speed is valid and not empty or invalid
+    if [[ -z "$new_fan_speed" || "$new_fan_speed" -lt 0 || "$new_fan_speed" -gt 4 ]]; then
         echo "ERROR: Invalid new_fan_speed detected: $new_fan_speed" | sudo tee -a /var/log/fan_control.log
         new_fan_speed=0  # Default to off in case of error
     fi
